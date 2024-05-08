@@ -8,4 +8,6 @@ package zad1;
 
 
 public class ChatServer {
+    public ChatServer(String host, int port) {
+    }
 }
