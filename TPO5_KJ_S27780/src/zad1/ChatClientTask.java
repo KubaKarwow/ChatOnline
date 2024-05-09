@@ -16,7 +16,7 @@ public class ChatClientTask extends FutureTask<String> {
     private List<String> messages;
     private int wait;
     public ChatClientTask(ChatClient c, List<String> msgs, int wait) {
-        super(ChatClientTask::handleClient);
+        super(() -> handleClient(c,msgs,wait));
         this.client=c;
         this.messages=msgs;
         this.wait=wait;
@@ -26,8 +26,26 @@ public class ChatClientTask extends FutureTask<String> {
         return new ChatClientTask(c,msgs,wait);
     }
 
-    public static String handleClient(){
-        return null;
+    public static String handleClient(ChatClient client, List<String> requests, int wait) throws InterruptedException {
+        StringBuilder resultBuilder= new StringBuilder();
+        client.connect();
+
+        resultBuilder.append(client.send("login " + client.getId())+"\n");
+        if(wait!=0){
+            Thread.sleep(wait);
+        }
+        for (String request : requests) {
+            resultBuilder.append(client.send(request)+"\n");
+            if(wait!=0){
+                Thread.sleep(wait);
+            }
+        }
+        resultBuilder.append(client.send("logout")+"\n");
+        if(wait!=0){
+            Thread.sleep(wait);
+        }
+        System.out.println(resultBuilder.toString());
+        return resultBuilder.toString();
     }
 
     public ChatClient getClient() {

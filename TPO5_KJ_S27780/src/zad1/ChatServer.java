@@ -132,34 +132,61 @@ public class ChatServer extends Thread {
             return;
         }
         String request = readRequest(socketChannel);
-        System.out.println(socketChannel.getRemoteAddress());
-        if(request.startsWith("login")){
-            login(request.split(" ")[1],socketChannel);
-            writeLoginResponse(socketChannel);
-        } else if(request.equals("logout")){
-            logout(socketChannel);
-            writeLogoutResponse(socketChannel);
-            socketChannel.close();
-        } else{
-            writeRequestResponse(socketChannel,request);
+        String response = getResponse(request, socketChannel);
+        writeResponseToEveryone(response);
+        closeAndRemoveSocketChannelIfNecessary(response);
+
+        //toDo czytasz requesta
+        //toDo getResponse (to co bedziesz pisal do kazdego)
+        //toDo writeResponseToEveryone WOHOOOO
+
+    }
+    private void writeResponseToEveryone(String response) throws IOException {
+        Set<SocketChannel> socketChannels = userMaps.keySet();
+        for (SocketChannel socketChannel : socketChannels) {
+            if(socketChannel.isOpen()){
+                ByteBuffer encode = Charset.defaultCharset().encode(response);
+                while(encode.hasRemaining()){
+                    socketChannel.write(encode);
+                }
+            }
         }
 
     }
-    private void writeLogoutResponse(SocketChannel socketChannel) throws IOException {
-        String userId = userMaps.get(socketChannel);
-        String response = userId + " logged out$";
-        ByteBuffer encode = Charset.defaultCharset().encode(response);
-        while(encode.hasRemaining()){
-            socketChannel.write(encode);
+    private void closeAndRemoveSocketChannelIfNecessary(String response) throws IOException {
+        if(response.endsWith("logged out$")){
+            String[] words = response.split(" ");
+            String userID = words[0];
+            for (SocketChannel socketChannel : userMaps.keySet()) {
+                if(userMaps.get(socketChannel).equals(userID)){
+                    socketChannel.close();
+                    userMaps.remove(socketChannel,userID);
+                    return;
+                }
+            }
         }
     }
-    private void writeLoginResponse(SocketChannel socketChannel) throws IOException {
-        String userId = userMaps.get(socketChannel);
-        String response = userId + " logged in$";
-        ByteBuffer encode = Charset.defaultCharset().encode(response);
-        while(encode.hasRemaining()){
-            socketChannel.write(encode);
+    private String getResponse(String request, SocketChannel socketChannel){
+        if(request.startsWith("login")){
+            login(request.split(" ")[1],socketChannel);
+            return getLoginResponse(socketChannel);
+        } else if(request.equals("logout")){
+            logout(socketChannel);
+            return getLogoutResponse(socketChannel);
+        } else{
+           return getRequestResponse(socketChannel,request);
         }
+
+    }
+
+    private String getLogoutResponse(SocketChannel socketChannel) {
+        String userId = userMaps.get(socketChannel);
+        return userId + " logged out$";
+    }
+    private String getLoginResponse(SocketChannel socketChannel) {
+        String userId = userMaps.get(socketChannel);
+        return userId + " logged in$";
+
     }
     private void logout(SocketChannel socketChannel){
         String userID = userMaps.get(socketChannel);
@@ -206,14 +233,11 @@ public class ChatServer extends Thread {
         return request.replaceAll("%20", "$");
 
     }
-    public void writeRequestResponse(SocketChannel socketChannel, String request) throws IOException {
+    public String getRequestResponse(SocketChannel socketChannel, String request) {
         String userID = userMaps.get(socketChannel);
+        System.out.println(userID+": "+request+"$");
+        return userID+": "+request+"$";
 
-        String response= userID+": "+request+", mówię ja, "+userID+"$";
-        ByteBuffer encode = Charset.defaultCharset().encode(response);
-        while(encode.hasRemaining()){
-            socketChannel.write(encode);
-        }
     }
 
 
