@@ -7,12 +7,13 @@
 package zad1;
 
 
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 
 public class ChatClientTask extends FutureTask<String> {
-    private ChatClient client;
+    private  ChatClient client;
     private List<String> messages;
     private int wait;
     public ChatClientTask(ChatClient c, List<String> msgs, int wait) {
@@ -26,26 +27,31 @@ public class ChatClientTask extends FutureTask<String> {
         return new ChatClientTask(c,msgs,wait);
     }
 
-    public static String handleClient(ChatClient client, List<String> requests, int wait) throws InterruptedException {
-        StringBuilder resultBuilder= new StringBuilder();
+    public static String handleClient(ChatClient client, List<String> requests, int wait) throws InterruptedException, IOException {
         client.connect();
 
-        resultBuilder.append(client.send("login " + client.getId())+"\n");
+        client.send("login " + client.getId());
         if(wait!=0){
             Thread.sleep(wait);
         }
         for (String request : requests) {
-            resultBuilder.append(client.send(request)+"\n");
+            client.send(request);
             if(wait!=0){
                 Thread.sleep(wait);
             }
         }
-        resultBuilder.append(client.send("logout")+"\n");
+        client.send("logout");
         if(wait!=0){
             Thread.sleep(wait);
         }
-        System.out.println(resultBuilder.toString());
-        return resultBuilder.toString();
+        while(true){
+            if(client.getChatReader().getLog().size()!=0){
+                if(client.getChatReader().getLog().get(client.getChatReader().getLog().size()-1).equals(client.getId()+" logged out")){
+                    break;
+                }
+            }
+        }
+        return client.getChatView();
     }
 
     public ChatClient getClient() {

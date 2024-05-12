@@ -15,10 +15,9 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class ChatServer extends Thread {
     private Map<SocketChannel, String> userMaps;
@@ -43,6 +42,7 @@ public class ChatServer extends Thread {
         ChatServer localhost = new ChatServer("localhost", 9999);
         localhost.startServer();
     }
+
     public void startServer() throws IOException {
         try {
             channel = ServerSocketChannel.open();
@@ -51,7 +51,7 @@ public class ChatServer extends Thread {
 
             selector = Selector.open();
             channel.register(selector, SelectionKey.OP_ACCEPT);
-
+            System.out.println("Server started\n");
             this.start();
         } catch (IOException e) {
             e.printStackTrace();
@@ -61,6 +61,7 @@ public class ChatServer extends Thread {
 
     public void stopServer() {
         isRunning = false;
+        System.out.println("Server stopped");
         try {
             channel.close();
         } catch (IOException e) {
@@ -103,23 +104,19 @@ public class ChatServer extends Thread {
             }
             Set<SelectionKey> selectionKeys = selector.selectedKeys();
             Iterator<SelectionKey> iterator = selectionKeys.iterator();
-
             while (iterator.hasNext()) {
                 SelectionKey key = iterator.next();
                 iterator.remove();
-
                 if (key.isAcceptable()) {
                     SocketChannel accept = channel.accept();
                     accept.configureBlocking(false);
                     accept.register(selector, SelectionKey.OP_READ);
                     continue;
                 }
-
                 if (key.isReadable()) {
                     SocketChannel socketChannel = (SocketChannel) key.channel();
                     socketChannel.configureBlocking(false);
                     handleRequest(socketChannel);
-
                 }
             }
         }
@@ -131,77 +128,85 @@ public class ChatServer extends Thread {
         if (!socketChannel.isOpen()) {
             return;
         }
-        String request = readRequest(socketChannel);
-        String response = getResponse(request, socketChannel);
-        writeResponseToEveryone(response);
-        closeAndRemoveSocketChannelIfNecessary(response);
-
-        //toDo czytasz requesta
-        //toDo getResponse (to co bedziesz pisal do kazdego)
-        //toDo writeResponseToEveryone WOHOOOO
-
+        List<String> requests= readRequest(socketChannel);
+     //   System.out.println("------requests----");
+     //  requests.forEach(System.out::println);
+        for (String request : requests) {
+            String response = getResponse(request, socketChannel);
+          //  System.out.println("response:"+response);
+            updateServerLog(response);
+            writeResponseToEveryone(response);
+            closeAndRemoveSocketChannelIfNecessary(response);
+        }
+    }
+    private void updateServerLog(String response){
+        LocalDateTime now = LocalDateTime.now();
+        String timeNow = now.toString().substring(11, 23);
+        serverLog.append(timeNow + " " + response.substring(0,response.length()-1) + '\n');
     }
     private void writeResponseToEveryone(String response) throws IOException {
         Set<SocketChannel> socketChannels = userMaps.keySet();
         for (SocketChannel socketChannel : socketChannels) {
-            if(socketChannel.isOpen()){
+            if (socketChannel.isOpen()) {
                 ByteBuffer encode = Charset.defaultCharset().encode(response);
-                while(encode.hasRemaining()){
+                while (encode.hasRemaining()) {
                     socketChannel.write(encode);
                 }
             }
         }
-
     }
+
     private void closeAndRemoveSocketChannelIfNecessary(String response) throws IOException {
-        if(response.endsWith("logged out$")){
+        if (response.endsWith("logged out$")) {
             String[] words = response.split(" ");
             String userID = words[0];
             for (SocketChannel socketChannel : userMaps.keySet()) {
-                if(userMaps.get(socketChannel).equals(userID)){
+                if (userMaps.get(socketChannel).equals(userID)) {
                     socketChannel.close();
-                    userMaps.remove(socketChannel,userID);
+                    userMaps.remove(socketChannel, userID);
                     return;
                 }
             }
         }
     }
-    private String getResponse(String request, SocketChannel socketChannel){
-        if(request.startsWith("login")){
-            login(request.split(" ")[1],socketChannel);
+
+    private String getResponse(String request, SocketChannel socketChannel) {
+        if (request.startsWith("login")) {
+            login(request.split(" ")[1], socketChannel);
             return getLoginResponse(socketChannel);
-        } else if(request.equals("logout")){
+        } else if (request.equals("logout")) {
             logout(socketChannel);
             return getLogoutResponse(socketChannel);
-        } else{
-           return getRequestResponse(socketChannel,request);
+        } else {
+            return getRequestResponse(socketChannel, request);
         }
-
     }
 
     private String getLogoutResponse(SocketChannel socketChannel) {
         String userId = userMaps.get(socketChannel);
         return userId + " logged out$";
     }
+
     private String getLoginResponse(SocketChannel socketChannel) {
         String userId = userMaps.get(socketChannel);
         return userId + " logged in$";
-
     }
-    private void logout(SocketChannel socketChannel){
+
+    private void logout(SocketChannel socketChannel) {
         String userID = userMaps.get(socketChannel);
-        serverLog.append(userID+" logged out\n");
+    }
 
+    private void login(String id, SocketChannel socketChannel) {
+        userMaps.put(socketChannel, id);
     }
-    private void login(String id, SocketChannel socketChannel){
-        serverLog.append(id+" logged in\n");
-        userMaps.put(socketChannel,id);
-    }
+
     private void putNewUserInDB(String id, SocketChannel socketChannel) {
         userMaps.put(socketChannel, id);
         logs.put(id, new StringBuilder());
     }
-    private String readRequest(SocketChannel socketChannel) throws IOException {
+
+    private List<String> readRequest(SocketChannel socketChannel) throws IOException {
+        List<String> result = new ArrayList<>();
         buffer.clear();
         boolean stillReading = true;
         StringBuilder resultBuilder = new StringBuilder();
@@ -215,70 +220,30 @@ public class ChatServer extends Thread {
             }
             buffer.flip();
             CharBuffer charBuffer = StandardCharsets.UTF_8.decode(buffer);
-            while(charBuffer.hasRemaining()){
+            while (charBuffer.hasRemaining()) {
                 char currentChar = charBuffer.get();
-                if(currentChar=='$'){
-                    stillReading=false;
-                    break;
+                if (currentChar == '$') {
+                    result.add(resultBuilder.toString());
+                    resultBuilder = new StringBuilder();
+                } else{
+                    resultBuilder.append(currentChar);
                 }
-                resultBuilder.append(currentChar);
             }
+            stillReading = false;
         }
-        System.out.println(resultBuilder.toString());
-        return handleDollarSigns(resultBuilder.toString());
-
+        return result.stream().map(this::handleDollarSigns).collect(Collectors.toList());
     }
-    private String handleDollarSigns(String request){
+
+    private String handleDollarSigns(String request) {
         //
         return request.replaceAll("%20", "$");
 
     }
+
     public String getRequestResponse(SocketChannel socketChannel, String request) {
         String userID = userMaps.get(socketChannel);
-        System.out.println(userID+": "+request+"$");
-        return userID+": "+request+"$";
-
+        return userID + ": " + request + "$";
     }
-
-
-
-//    private void updatePersonalLog(String request, String id) {
-//        if (request.charAt(0) == 'l') {
-//            logs.put(id, new StringBuilder());
-//            logs.get(id).append("=== ").append(id).append(" log start ===\nlogged in\n");
-//        } else if (request.charAt(0) == 'b') {
-//            logs.get(id).append("logged out\n=== ").append(id).append(" log end ===\n");
-//        } else {
-//            logs.get(id).append("Request: ").append(request).append("\nResult:\n");
-//            String[] dates = request.split(" ");
-//            logs.get(id).append(Time.passed(strip(dates[0]), strip(dates[1]))).append('\n');
-//        }
-//    }
-
-//    private void updateGeneralLog(String request, String id) {
-//        LocalTime now = LocalTime.now();
-//        String hourMinuteSecond = now.toString().substring(0, 9);
-//        String nanoSeconds = (now.getNano() + "").substring(0, 3);
-//        String time = hourMinuteSecond + nanoSeconds;
-//        if (request.charAt(0) == 'l') {
-//            serverLog.append(id).append(" logged in at ").append(time).append('\n');
-//        } else if (request.charAt(0) == 'b') {
-//            serverLog.append(id).append(" logged out at ").append(time).append('\n');
-//
-//        } else {
-//            String s = request.replaceAll("\r\n", "");
-//            serverLog.append(id).append(" request at ").
-//                    append(time).append(": \"").append(s).append("\"").append("\n");
-//        }
-//    }
-
-//    private String login(String id) {
-//        updatePersonalLog("login", id);
-//        updateGeneralLog("login", id);
-//        return "logged in";
-//    }
-
-
 
     private String getIdByChannel(SocketChannel socketChannel) {
         return userMaps.get(socketChannel);

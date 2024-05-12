@@ -20,15 +20,13 @@ public class Main {
     List<String> test = Files.readAllLines(Paths.get(testFileName));
     String host = test.remove(0);
     int port = Integer.valueOf(test.remove(0));
-//    ChatServer s = new ChatServer(host, port);
-//    s.startServer();
+    ChatServer s = new ChatServer(host, port);
+    s.startServer();
 
     ExecutorService es = Executors.newCachedThreadPool();
     List<ChatClientTask> ctasks = new ArrayList<>();
 
-    for (String s : test) {
-      System.out.println(s);
-    }
+
 
     for (String line : test) {
       String[] elts = line.split("\\t");
@@ -46,13 +44,14 @@ public class Main {
         task.get();
       } catch (InterruptedException | ExecutionException exc) {
         System.out.println("*** " + exc);
+        exc.printStackTrace();
       }
     });
     es.shutdown();
-//    s.stopServer();
+    s.stopServer();
 
-//    System.out.println("\n=== Server log ===");
-//    System.out.println(s.getServerLog());
+    System.out.println("\n=== Server log ===");
+    System.out.println(s.getServerLog());
 
     ctasks.forEach(t -> System.out.println(t.getClient().getChatView()));
   }

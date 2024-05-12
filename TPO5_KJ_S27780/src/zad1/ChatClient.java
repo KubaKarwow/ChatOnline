@@ -19,35 +19,26 @@ public class ChatClient {
     private String id;
     private SocketChannel socketChannel;
     private boolean isFinished = false;
-    String clientLog;
+    private volatile ChatReader chatReader;
 
     public static void main(String[] args) {
         ChatClient chatClient = new ChatClient("localhost", 9999, "adas");
         chatClient.connect();
-        String login = chatClient.send("login adas");
-        System.out.println(login);
-        String dobry = chatClient.send("Dzień dobry");
-        System.out.println(dobry);
-        String aaaa = chatClient.send("aaaa");
-        System.out.println(aaaa);
-        String bbbb = chatClient.send("bbbb");
-        System.out.println(bbbb);
-        String widzenia = chatClient.send("Do widzenia");
-        System.out.println(widzenia);
-        String logout = chatClient.send("logout");
-        System.out.println(logout);
+
     }
 
     public ChatClient(String host, int port, String id) {
         this.host = host;
         this.port = port;
         this.id = id;
-        clientLog = "";
-
     }
 
     public String getChatView() {
-        return clientLog;
+        StringBuilder chatViewBuilder = new StringBuilder();
+        for (String s : chatReader.getLog()) {
+            chatViewBuilder.append(s).append('\n');
+        }
+        return chatViewBuilder.toString();
     }
 
     public void connect() {
@@ -56,12 +47,14 @@ public class ChatClient {
             socketChannel.bind(null);
             socketChannel.connect(new InetSocketAddress(host, port));
             socketChannel.configureBlocking(false);
+            chatReader= new ChatReader(socketChannel,id);
+            chatReader.start();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public String send(String request) {
+    public void send(String request) {
         if (isFinished) {
             try {
                 socketChannel.close();
@@ -74,15 +67,6 @@ public class ChatClient {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-        try {
-            if (request.equals("bye") || request.equals("bye and log transfer")) {
-                isFinished = true;
-            }
-            return readResponse();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
     }
 
     ByteBuffer byteBuffer = ByteBuffer.allocateDirect(1024);
@@ -104,35 +88,53 @@ public class ChatClient {
     // escapujesz podwojnie $
     // kleint jak to wysyla to zamieasz na jakies %20
     // i to samo robisz na serwerze
-    ByteBuffer readBuffer = ByteBuffer.allocateDirect(1024);
 
-    private String readResponse() throws IOException {
-        StringBuilder responseBuilder = new StringBuilder();
-        readBuffer.clear();
-        boolean stillReading = true;
-        while (stillReading) {
-            int read = socketChannel.read(readBuffer);
-            if (read == 0) {
-                continue;
-            } else if (read == -1) {
-                break;
-            } else {
-                readBuffer.flip();
-                CharBuffer charBuffer = StandardCharsets.UTF_8.decode(readBuffer);
-                while (charBuffer.hasRemaining()) {
-                    char currentChar = charBuffer.get();
-                    if (currentChar == '$') {
-                        stillReading = false;
-                        break;
-                    }
-                    responseBuilder.append(currentChar);
-                }
-            }
-        }
-        return responseBuilder.toString();
-    }
 
     public String getId() {
         return this.id;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public SocketChannel getSocketChannel() {
+        return socketChannel;
+    }
+
+    public void setSocketChannel(SocketChannel socketChannel) {
+        this.socketChannel = socketChannel;
+    }
+
+    public boolean isFinished() {
+        return isFinished;
+    }
+
+    public void setFinished(boolean finished) {
+        isFinished = finished;
+    }
+
+    public ChatReader getChatReader() {
+        return chatReader;
+    }
+
+    public void setChatReader(ChatReader chatReader) {
+        this.chatReader = chatReader;
     }
 }
