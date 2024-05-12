@@ -44,10 +44,19 @@ public class ChatClientTask extends FutureTask<String> {
         if(wait!=0){
             Thread.sleep(wait);
         }
-        while(true){
-            if(client.getChatReader().getLog().size()!=0){
-                if(client.getChatReader().getLog().get(client.getChatReader().getLog().size()-1).equals(client.getId()+" logged out")){
-                    break;
+        // komentarz
+        // logged out nie koniecznie musi byc jako ostatnia komenda ktora przeczytalismy
+        // ale wydaje mi sie ze powinna byc
+        // w kazdym razie taki for wypierdala sie bo concurrentMOdificationException
+        boolean loggedOut=false;
+        while(!loggedOut){
+            List<String> log = client.getChatReader().getLog();
+            if(log.size()!=0){
+                for (String chatEntry :log) {
+                    if(chatEntry.equals(client.getId() + " logged out")){
+                        loggedOut=true;
+                        break;
+                    }
                 }
             }
         }

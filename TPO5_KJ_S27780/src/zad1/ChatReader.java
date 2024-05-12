@@ -38,6 +38,7 @@ public class ChatReader extends Thread{
                 //    System.out.println("do we end the thigny?");
                 //    System.out.println("LOG");
                 //    System.out.println(log);
+                    System.out.println("USER:"+userID);
                     break;
                 }
         }
@@ -74,6 +75,7 @@ public class ChatReader extends Thread{
                 stillReading=false;
             }
         }
+
         return result;
     }
 

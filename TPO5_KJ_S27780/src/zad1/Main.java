@@ -50,6 +50,8 @@ public class Main {
     es.shutdown();
     s.stopServer();
 
+
+    System.out.println("____________________________________");
     System.out.println("\n=== Server log ===");
     System.out.println(s.getServerLog());
 
