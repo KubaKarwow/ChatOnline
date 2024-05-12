@@ -1,11 +1,4 @@
-/**
- *
- *  @author Karwowski Jakub S27780
- *
- */
-
 package zad1;
-
 
 import java.io.*;
 import java.nio.file.*;
@@ -26,10 +19,8 @@ public class Main {
     ExecutorService es = Executors.newCachedThreadPool();
     List<ChatClientTask> ctasks = new ArrayList<>();
 
-
-
     for (String line : test) {
-      String[] elts = line.split("\\t");
+      String[] elts = line.split("\t");
       String id = elts[0];
       int wait = Integer.valueOf(elts[1]);
       List<String> msgs = new ArrayList<>();
@@ -44,14 +35,11 @@ public class Main {
         task.get();
       } catch (InterruptedException | ExecutionException exc) {
         System.out.println("*** " + exc);
-        exc.printStackTrace();
       }
     });
     es.shutdown();
     s.stopServer();
 
-
-    System.out.println("____________________________________");
     System.out.println("\n=== Server log ===");
     System.out.println(s.getServerLog());
 

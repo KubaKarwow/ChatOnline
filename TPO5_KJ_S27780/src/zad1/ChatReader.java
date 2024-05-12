@@ -28,17 +28,11 @@ public class ChatReader extends Thread{
             List<String> messages;
             try {
                 messages = readResponse();
-               // messages.forEach(System.out::println);
-
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
                 log.addAll(messages);
                 if(log.get(log.size()-1).equals(userID+ " logged out")){
-                //    System.out.println("do we end the thigny?");
-                //    System.out.println("LOG");
-                //    System.out.println(log);
-                    System.out.println("USER:"+userID);
                     break;
                 }
         }
@@ -63,7 +57,7 @@ public class ChatReader extends Thread{
                     char currentChar = charBuffer.get();
                     if (currentChar == '$') {
                         result.add(responseBuilder.toString());
-                        if(responseBuilder.toString().endsWith("logged out")){
+                        if(responseBuilder.toString().equals(userID+ " logged out")){
                             stillReading = false;
                             break;
                         }

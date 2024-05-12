@@ -129,11 +129,8 @@ public class ChatServer extends Thread {
             return;
         }
         List<String> requests= readRequest(socketChannel);
-        System.out.println("------requests----");
-       requests.forEach(System.out::println);
         for (String request : requests) {
             String response = getResponse(request, socketChannel);
-            System.out.println("response:"+response);
             updateServerLog(response);
             writeResponseToEveryone(response);
             closeAndRemoveSocketChannelIfNecessary(response);
